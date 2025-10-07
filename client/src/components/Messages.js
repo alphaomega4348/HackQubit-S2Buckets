@@ -11,6 +11,11 @@ import {
 } from "@mui/material";
 import { Box } from "@mui/system";
 import React, { useEffect, useRef, useState } from "react";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import Switch from "@mui/material/Switch";
+import { MdMoreVert, MdReport, MdBlock } from "react-icons/md";
 import { AiFillBackward, AiFillCaretLeft, AiFillMessage } from "react-icons/ai";
 import { Link } from "react-router-dom";
 import { getMessages, sendMessage } from "../api/messages";
@@ -77,6 +82,48 @@ const Messages = (props) => {
   useEffect(() => {
     fetchMessages();
   }, [props.conservant]);
+
+  // preferences per conservant (persisted in localStorage)
+  const prefKey = (id) => `messages_prefs_${id}`;
+  const [anchorEl, setAnchorEl] = useState(null);
+  const menuOpen = Boolean(anchorEl);
+  const [allowOffensive, setAllowOffensive] = useState(false);
+
+  useEffect(() => {
+    if (props.conservant) {
+      try {
+        const raw = localStorage.getItem(prefKey(props.conservant._id));
+        const parsed = raw ? JSON.parse(raw) : null;
+        setAllowOffensive(parsed ? !!parsed.allowOffensive : false);
+      } catch (e) {
+        setAllowOffensive(false);
+      }
+    }
+  }, [props.conservant]);
+
+  const handleMenuOpen = (e) => setAnchorEl(e.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+
+  const toggleAllowOffensive = () => {
+    const next = !allowOffensive;
+    setAllowOffensive(next);
+    if (props.conservant) {
+      const key = prefKey(props.conservant._id);
+      localStorage.setItem(key, JSON.stringify({ allowOffensive: next }));
+      // optional: call backend to persist preference
+      // fetch(`/api/messages/${props.conservant._id}/prefs`, { method: 'POST', body: JSON.stringify({ allowOffensive: next }), headers: { 'Content-Type': 'application/json' } })
+    }
+  };
+
+  const handleBlockUser = () => {
+    alert('Block user feature not implemented yet.');
+    handleMenuClose();
+  };
+
+  const handleReportUser = () => {
+    alert('Report user feature not implemented yet.');
+    handleMenuClose();
+  };
 
   useEffect(() => {
     if (messages) {
@@ -191,6 +238,30 @@ const Messages = (props) => {
                 <b>{props.conservant.username}</b>
               </Link>
             </Typography>
+              <Box sx={{ flexGrow: 1 }} />
+              <IconButton onClick={handleMenuOpen} size="small" aria-label="conversation menu">
+                <MdMoreVert />
+              </IconButton>
+              <Menu anchorEl={anchorEl} open={menuOpen} onClose={handleMenuClose}>
+                <MenuItem>
+                  <ListItemIcon>
+                    <Switch checked={allowOffensive} onChange={toggleAllowOffensive} />
+                  </ListItemIcon>
+                  Raw Mode
+                </MenuItem>
+                <MenuItem onClick={handleBlockUser}>
+                  <ListItemIcon>
+                    <MdBlock size={18} />
+                  </ListItemIcon>
+                  Block user
+                </MenuItem>
+                <MenuItem onClick={handleReportUser}>
+                  <ListItemIcon>
+                    <MdReport size={18} />
+                  </ListItemIcon>
+                  Report user
+                </MenuItem>
+              </Menu>
           </HorizontalStack>
           <Divider />
           <Box sx={{ height: "calc(100vh - 240px)" }}>
