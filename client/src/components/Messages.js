@@ -88,65 +88,32 @@ const Messages = (props) => {
     messagesEndRef.current?.scrollIntoView();
   };
 
-  const detectHateSpeech = async (text) => {
-    try {
-      const response = await fetch("http://localhost:5000/detect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error detecting hate speech:", error);
-      throw error;
-    }
-  };
-
   const handleSendMessage = async (content) => {
-    try {
-      // Check message content for hate speech
-      const contentResult = await detectHateSpeech(content);
-      
-      if (contentResult.result === 1 || contentResult === 1) {
-        // Return error to be displayed in SendMessage component
-        return { error: "Message contains hateful content and cannot be sent" };
-      }
+    const newMessage = { direction: "from", content };
+    const newMessages = [newMessage, ...messages];
 
-      const newMessage = { direction: "from", content };
-      const newMessages = [newMessage, ...messages];
-
-      if (conversation.new) {
-        conversation.messages = [...conversation.messages, newMessage];
-      }
-
-      let newConversations = props.conversations.filter(
-        (conversationCompare) => conversation._id !== conversationCompare._id
-      );
-
-      newConversations.unshift(conversation);
-
-      props.setConversations(newConversations);
-
-      setMessages(newMessages);
-
-      await sendMessage(user, newMessage, conversation.recipient._id);
-
-      socket.emit(
-        "send-message",
-        conversation.recipient._id,
-        user.username,
-        content
-      );
-
-      return { success: true };
-    } catch (err) {
-      console.error("Error validating message:", err);
-      return { error: "Failed to validate message. Please try again." };
+    if (conversation.new) {
+      conversation.messages = [...conversation.messages, newMessage];
     }
+
+    let newConversations = props.conversations.filter(
+      (conversationCompare) => conversation._id !== conversationCompare._id
+    );
+
+    newConversations.unshift(conversation);
+
+    props.setConversations(newConversations);
+
+    setMessages(newMessages);
+
+    await sendMessage(user, newMessage, conversation.recipient._id);
+
+    socket.emit(
+      "send-message",
+      conversation.recipient._id,
+      user.username,
+      content
+    );
   };
 
   const handleReceiveMessage = (senderId, username, content) => {
@@ -219,8 +186,8 @@ const Messages = (props) => {
               height={30}
               width={30}
             />
-            <Typography sx={{ color: 'var(--accent)', fontWeight: 600 }}>
-              <Link to={"/users/" + props.conservant.username} style={{ color: 'inherit', textDecoration: 'none' }}>
+            <Typography>
+              <Link to={"/users/" + props.conservant.username}>
                 <b>{props.conservant.username}</b>
               </Link>
             </Typography>

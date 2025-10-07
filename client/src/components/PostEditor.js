@@ -7,6 +7,7 @@ import {
   Typography,
   IconButton,
   LinearProgress,
+  Alert,
 } from "@mui/material";
 import { Box } from "@mui/system";
 import React, { useState } from "react";
@@ -25,12 +26,13 @@ const PostEditor = () => {
     title: "",
     content: "",
   });
-  //
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  //
+  const [scanningImage, setScanningImage] = useState(false);
+  const [ocrText, setOcrText] = useState("");
+  const [containsHate, setContainsHate] = useState(false);
 
   const [serverError, setServerError] = useState("");
   const [errors, setErrors] = useState({});
@@ -42,15 +44,65 @@ const PostEditor = () => {
     setErrors(errors);
   };
 
-  //
+  const performOCR = async (imageFile) => {
+    try {
+      setScanningImage(true);
+      setOcrText("");
+      setContainsHate(false);
+
+      const formData = new FormData();
+      formData.append("image", imageFile);
+
+      const response = await fetch("/api/ocr/scan", {
+        method: "POST",
+        body: formData,
+      });
+
+      const text = await response.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (err) {
+        console.error("OCR endpoint returned non-JSON response:", text);
+        setServerError("OCR scan failed: " + text.slice(0, 200));
+        return false;
+      }
+
+      if (result.error) {
+        setServerError(result.error);
+        return false;
+      }
+
+      setOcrText(result.text || "");
+      
+      // Check if the word "hate" exists in the extracted text
+      const hasHate = result.containsHate || false;
+      setContainsHate(hasHate);
+
+      return hasHate;
+    } catch (err) {
+      console.error("OCR Error:", err);
+      setServerError("Failed to scan image content");
+      return false;
+    } finally {
+      setScanningImage(false);
+    }
+  };
 
   const handleFileChange = async (e) => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
+    
     setFile(f);
     setPreview(URL.createObjectURL(f));
 
-    // auto upload to backend which uploads to Cloudinary
+    // Check if it's an image file
+    if (f.type.startsWith("image/")) {
+      // Perform OCR to check for hate content
+      await performOCR(f);
+    }
+
+    // Auto upload to backend which uploads to Cloudinary
     await uploadFileToServer(f);
   };
 
@@ -59,7 +111,6 @@ const PostEditor = () => {
       setUploadingImage(true);
       const data = new FormData();
       data.append("file", f);
-      // optional: include folder (e.g. socialify/posts)
       data.append("folder", "socialify/posts");
 
       const res = await fetch("/api/uploads", {
@@ -67,14 +118,16 @@ const PostEditor = () => {
         body: data,
       });
 
-      // handle non-JSON responses (server HTML error pages)
       const text = await res.text();
       let json;
       try {
         json = JSON.parse(text);
       } catch (err) {
         console.error("Upload endpoint returned non-JSON response:", text);
-        setServerError("Upload failed: " + (text && text.length > 200 ? text.slice(0, 200) + "..." : text));
+        setServerError(
+          "Upload failed: " +
+            (text && text.length > 200 ? text.slice(0, 200) + "..." : text)
+        );
         return;
       }
 
@@ -93,18 +146,23 @@ const PostEditor = () => {
     }
   };
 
-  //
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Block submission if hate content detected
+    if (containsHate) {
+      setServerError(
+        "Cannot submit post: Image contains prohibited content (hate speech detected)"
+      );
+      return;
+    }
+
     setLoading(true);
-    //
-    // if file selected but image not yet uploaded, try uploading now
+
+    // If file selected but image not yet uploaded, try uploading now
     if (file && !formData.image) {
       await uploadFileToServer(file);
     }
-    //
 
     const data = await createPost(formData, isLoggedIn());
     setLoading(false);
@@ -117,7 +175,6 @@ const PostEditor = () => {
 
   const validate = () => {
     const errors = {};
-
     return errors;
   };
 
@@ -140,7 +197,6 @@ const PostEditor = () => {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit}>
-          {/**/}
           <input
             id="post-file"
             type="file"
@@ -153,15 +209,59 @@ const PostEditor = () => {
               Attach file
             </Button>
           </label>
-          {uploadingImage && <LinearProgress sx={{ mt: 1, mb: 1 }} />}
+
+          {uploadingImage && (
+            <>
+              <LinearProgress sx={{ mt: 1, mb: 1 }} />
+              <Typography variant="caption" color="text.secondary">
+                Uploading image...
+              </Typography>
+            </>
+          )}
+
+          {scanningImage && (
+            <>
+              <LinearProgress sx={{ mt: 1, mb: 1 }} />
+              <Typography variant="caption" color="text.secondary">
+                Scanning image for content moderation...
+              </Typography>
+            </>
+          )}
+
+          {containsHate && (
+            <Alert severity="error" sx={{ mt: 1, mb: 1 }}>
+              ⚠️ This image contains prohibited content and cannot be posted.
+            </Alert>
+          )}
+
           {preview && (
             <Box sx={{ mt: 1, mb: 1 }}>
               <Typography variant="subtitle2">Preview</Typography>
-              <Box component="img" src={preview} alt="preview" sx={{ maxWidth: "100%", maxHeight: 280 }} />
+              <Box
+                component="img"
+                src={preview}
+                alt="preview"
+                sx={{ maxWidth: "100%", maxHeight: 280 }}
+              />
             </Box>
           )}
 
-          {/**/}
+          {ocrText && (
+            <Box sx={{ mt: 1, mb: 1 }}>
+              <Typography variant="subtitle2">Detected Text:</Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  p: 1,
+                  bgcolor: "black",
+                  borderRadius: 1,
+                  fontSize: "0.85rem",
+                }}
+              >
+                {ocrText || "No text detected"}
+              </Typography>
+            </Box>
+          )}
 
           <TextField
             fullWidth
@@ -190,7 +290,7 @@ const PostEditor = () => {
             variant="outlined"
             type="submit"
             fullWidth
-            disabled={loading}
+            disabled={loading || containsHate || scanningImage || uploadingImage}
             sx={{
               mt: 2,
             }}

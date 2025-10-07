@@ -11,65 +11,40 @@ import React, { useEffect, useState } from "react";
 import { sendMessage } from "../api/messages";
 import { isLoggedIn } from "../helpers/authHelper";
 import HorizontalStack from "./util/HorizontalStack";
-import ErrorAlert from "./ErrorAlert";
 
 const SendMessage = (props) => {
   const [content, setContent] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSendMessage = async () => {
-    if (content.trim().length === 0) return;
-
-    setLoading(true);
-    setError("");
-
-    const result = await props.onSendMessage(content);
-    
-    setLoading(false);
-
-    if (result && result.error) {
-      setError(result.error);
-    } else {
-      setContent("");
-      setError("");
-    }
-  };
-
-  const handleChange = (e) => {
-    setContent(e.target.value);
-    setError("");
+  const handleSendMessage = () => {
+    props.onSendMessage(content);
+    setContent("");
   };
 
   return (
     <Stack
       sx={{
         m: 2,
+        height: "40px",
       }}
+      justifyContent="center"
     >
-      {error && <ErrorAlert error={error} sx={{ mb: 2 }} />}
       <HorizontalStack>
         <TextField
-          onChange={handleChange}
+          onChange={(e) => setContent(e.target.value)}
           label="Send a message..."
           fullWidth
           value={content}
           autoComplete="off"
           size="small"
-          disabled={loading}
-          error={error.length > 0}
           onKeyPress={(e) => {
-            if (e.key === "Enter" && content.length > 0 && !loading) {
+            if (e.key === "Enter" && content.length > 0) {
               handleSendMessage();
             }
           }}
         />
 
-        <Button 
-          onClick={handleSendMessage} 
-          disabled={content.length === 0 || loading}
-        >
-          {loading ? "Sending..." : "Send"}
+        <Button onClick={handleSendMessage} disabled={content.length === 0}>
+          Send
         </Button>
       </HorizontalStack>
     </Stack>

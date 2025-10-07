@@ -1,6 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+const ocrRoutes = require('./routes/ocr');
+
 
 // Load environment variables as early as possible so modules that read
 // process.env (for example controllers that configure Cloudinary) see them.
@@ -48,7 +50,8 @@ app.use("/api/comments", comments);
 app.use("/api/messages", messages);
 app.use("/api/uploads", uploads);
 
-// Global error handler — return JSON to prevent HTML error pages
+app.use('/api/ocr', ocrRoutes);
+
 app.use((err, req, res, next) => {
   console.error("Unhandled server error:", err && err.stack ? err.stack : err);
   if (res.headersSent) return next(err);

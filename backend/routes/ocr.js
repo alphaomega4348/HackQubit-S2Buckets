@@ -1,73 +1,74 @@
-const express = require("express");
-const router = express.Router();
-const multer = require("multer");
-const tesseract = require("node-tesseract-ocr");
-const fs = require("fs").promises;
-const path = require("path");
+// Backend API endpoint for OCR scanning
+// File: routes/ocr.js or similar
 
-// Configure multer for temporary file storage
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const Tesseract = require('tesseract.js');
+const path = require('path');
+
+// Configure multer for file uploads (memory storage)
+const storage = multer.memoryStorage();
 const upload = multer({
-  dest: "temp/",
+  storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
     // Accept only images
-    if (file.mimetype.startsWith("image/")) {
+    if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed"), false);
+      cb(new Error('Only image files are allowed'));
     }
   },
 });
 
-// OCR configuration
-const tesseractConfig = {
-  lang: "eng", // English language
-  oem: 1, // OCR Engine Mode: LSTM only
-  psm: 3, // Page segmentation mode: Fully automatic page segmentation
-};
-
-router.post("/extract", upload.single("image"), async (req, res) => {
-  let tempFilePath = null;
-
+// OCR endpoint
+router.post('/scan', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: "No image file provided" });
+      return res.status(400).json({ error: 'No image file provided' });
     }
 
-    tempFilePath = req.file.path;
-
-    // Perform OCR on the image
-    const text = await tesseract.recognize(tempFilePath, tesseractConfig);
-
-    // Clean up the extracted text
-    const cleanedText = text.trim();
-
-    // Delete temporary file
-    await fs.unlink(tempFilePath);
-
-    res.json({
-      success: true,
-      text: cleanedText,
-    });
-  } catch (error) {
-    console.error("OCR extraction error:", error);
-
-    // Clean up temp file if it exists
-    if (tempFilePath) {
-      try {
-        await fs.unlink(tempFilePath);
-      } catch (unlinkError) {
-        console.error("Failed to delete temp file:", unlinkError);
+    // Perform OCR using Tesseract
+    const result = await Tesseract.recognize(
+      req.file.buffer,
+      'eng', // Language
+      {
+        logger: (m) => console.log(m), // Optional: log progress
       }
-    }
+    );
 
-    res.status(500).json({
-      error: "Failed to extract text from image",
-      details: error.message,
+    const extractedText = result.data.text;
+    
+    // Check for hate speech (case-insensitive)
+    const lowerText = extractedText.toLowerCase();
+    const containsHate = lowerText.includes('hate');
+
+    // You can expand this to check for more words or use a more sophisticated
+    // hate speech detection algorithm/API
+    const prohibitedWords = ['hate','kill','ruin'];
+    const foundWords = prohibitedWords.filter(word => 
+      lowerText.includes(word)
+    );
+
+    return res.json({
+      success: true,
+      text: extractedText,
+      containsHate: containsHate,
+      foundWords: foundWords, // Optional: return which words were found
+      confidence: result.data.confidence, // OCR confidence score
+    });
+
+  } catch (error) {
+    console.error('OCR Error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to process image',
+      details: error.message 
     });
   }
 });
 
 module.exports = router;
+
