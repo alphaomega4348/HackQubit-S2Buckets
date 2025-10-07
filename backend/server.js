@@ -17,6 +17,7 @@ const users = require("./routes/users");
 const comments = require("./routes/comments");
 const messages = require("./routes/messages");
 const uploads = require("./routes/uploads");
+const moderationRoutes=require('./routes/moderation')
 const PostLike = require("./models/PostLike");
 const Post = require("./models/Post");
 
@@ -49,6 +50,8 @@ app.use("/api/users", users);
 app.use("/api/comments", comments);
 app.use("/api/messages", messages);
 app.use("/api/uploads", uploads);
+app.use("/api/moderate", moderationRoutes);
+
 
 app.use('/api/ocr', ocrRoutes);
 
