@@ -7,6 +7,12 @@ cloudinary.config({
 });
 
 exports.upload = (req, res) => {
+  // fail-fast with JSON if Cloudinary not configured
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    console.error("Cloudinary environment variables are missing");
+    return res.status(500).json({ error: "Cloudinary not configured on server" });
+  }
+
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }

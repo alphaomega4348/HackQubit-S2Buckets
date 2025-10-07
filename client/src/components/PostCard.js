@@ -96,7 +96,7 @@ const PostCard = (props) => {
       <Box className={preview}>
         <HorizontalStack spacing={0} alignItems="initial">
           {/* left column: controls only (no duplicate media) */}
-          <Box sx={{ width: { xs: "100%", md: 120 }, display: "flex", flexDirection: "column", gap: 1 }}>
+          <Box sx={{ width: { xs: "100%", md: 80 }, display: "flex", flexDirection: "column", gap: 1 }}>
             <Box sx={{ display: "flex", justifyContent: "center", p: 1 }}>
               {/* reserved for avatar/controls or small thumbnails if needed */}
             </Box>

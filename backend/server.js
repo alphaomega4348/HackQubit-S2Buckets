@@ -1,6 +1,11 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
+
+// Load environment variables as early as possible so modules that read
+// process.env (for example controllers that configure Cloudinary) see them.
+dotenv.config();
+
 const cors = require("cors");
 const path = require("path");
 const app = express();
@@ -12,10 +17,6 @@ const messages = require("./routes/messages");
 const uploads = require("./routes/uploads");
 const PostLike = require("./models/PostLike");
 const Post = require("./models/Post");
-const ocrRoutes = require("./routes/ocr");
-const moderateRoutes = require("./routes/moderate");
-
-dotenv.config();
 
 const httpServer = require("http").createServer(app);
 const io = require("socket.io")(httpServer, {
@@ -47,10 +48,12 @@ app.use("/api/comments", comments);
 app.use("/api/messages", messages);
 app.use("/api/uploads", uploads);
 
-
-// Register the routes
-app.use("/api/ocr", ocrRoutes);
-app.use("/api/moderate", moderateRoutes);
+// Global error handler — return JSON to prevent HTML error pages
+app.use((err, req, res, next) => {
+  console.error("Unhandled server error:", err && err.stack ? err.stack : err);
+  if (res.headersSent) return next(err);
+  res.status(err && err.status ? err.status : 500).json({ error: err && err.message ? err.message : 'Internal Server Error' });
+});
 
 if (process.env.NODE_ENV == "production") {
   app.use(express.static(path.join(__dirname, "/client/build")));

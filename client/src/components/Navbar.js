@@ -11,6 +11,7 @@ import {
 import { Box } from "@mui/system";
 import React, { useEffect, useState } from "react";
 import { BiLoader } from "react-icons/bi";
+import logo from "../assets/logo.png";
 import { IoIosSearch } from "react-icons/io";
 import "react-icons/ai";
 import "react-icons/ri";
@@ -90,11 +91,7 @@ const Navbar = ({ mode, toggleMode }) => {
             color={theme.palette.primary.main}
             onClick={() => navigate("/")}
           /> */}
-          <BiLoader
-            size={33}
-            style={{ color: 'var(--accent)' }}
-            onClick={() => navigate("/")}
-          />
+          <Box component="img" src={logo} alt="logo" sx={{ width: 36, height: 36, cursor: 'pointer' }} onClick={() => navigate("/")} />
           <Typography
             sx={{ display: mobile ? "none" : "block" }}
             variant={navbarWidth ? "h5" : "h3"}
