@@ -4,11 +4,11 @@ import {
   Stack,
   TextField,
   Typography,
-  Link,
   Alert,
 } from "@mui/material";
 import { Box } from "@mui/system";
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { signup } from "../../api/users";
 import { loginUser } from "../../helpers/authHelper";
 import { useNavigate } from "react-router-dom";
@@ -72,10 +72,10 @@ const SignupView = () => {
   };
 
   return (
-    <Container maxWidth={"xs"} sx={{ mt: { xs: 2, md: 6 } }}>
+    <Container maxWidth={"xs"} sx={{ mt: { xs: 2, md: 6 }, border: '1px solid var(--accent)', borderRadius: 2, padding: 3 }}>
       <Stack alignItems="center">
-        <Typography variant="h2" color="text.secondary" sx={{ mb: 6 }}>
-          <Link to="/" color="inherit" underline="none">
+        <Typography variant="h2" sx={{ mb: 6 }}>
+          <Link to="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
             Socialify
           </Link>
         </Typography>
