@@ -1,0 +1,23 @@
+# Ignore datasets
+HateSpeechDataset.csv
+HateSpeechDatasetBalanced.csv
+*.csv
+
+# Ignore pickle models
+*.pkl
+
+# Ignore venv
+ML_Integration/Lib/
+ML_Integration/Scripts/
+ML_Integration/Include/
+ML_Integration/pyvenv.cfg
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs & environment
+*.log
+.env
