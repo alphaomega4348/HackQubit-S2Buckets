@@ -90,12 +90,10 @@ const Navbar = ({ mode, toggleMode }) => {
             color={theme.palette.primary.main}
             onClick={() => navigate("/")}
           /> */}
-          <BiLoader 
+          <BiLoader
             size={33}
-             
-          style={{ color:"purple" }}
-           
-           onClick={() => navigate("/")}
+            style={{ color: 'var(--accent)' }}
+            onClick={() => navigate("/")}
           />
           <Typography
             sx={{ display: mobile ? "none" : "block" }}

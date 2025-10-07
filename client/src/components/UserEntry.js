@@ -8,10 +8,10 @@ const UserEntry = ({ username }) => {
   return (
     <HorizontalStack justifyContent="space-between" key={username}>
       <HorizontalStack>
-        <UserAvatar width={30} height={30} username={username} />
-        <Typography>{username}</Typography>
+  <UserAvatar width={30} height={30} username={username} />
+  <Typography sx={{ color: 'var(--accent)', fontWeight: 600 }}>{username}</Typography>
       </HorizontalStack>
-      <Link to={"/users/" + username}>View</Link>
+  <Link to={"/users/" + username} style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>View</Link>
     </HorizontalStack>
   );
 };

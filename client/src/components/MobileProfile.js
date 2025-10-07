@@ -36,7 +36,7 @@ const MobileProfile = (props) => {
           <HorizontalStack spacing={2} justifyContent="space-between">
             <HorizontalStack>
               <UserAvatar width={50} height={50} username={user.username} />
-              <Typography variant="h6" textOverflow="ellipses">
+              <Typography variant="h6" textOverflow="ellipses" sx={{ color: 'var(--accent)', fontWeight: 600 }}>
                 {user.username}
               </Typography>
             </HorizontalStack>

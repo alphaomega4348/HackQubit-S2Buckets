@@ -219,8 +219,8 @@ const Messages = (props) => {
               height={30}
               width={30}
             />
-            <Typography>
-              <Link to={"/users/" + props.conservant.username}>
+            <Typography sx={{ color: 'var(--accent)', fontWeight: 600 }}>
+              <Link to={"/users/" + props.conservant.username} style={{ color: 'inherit', textDecoration: 'none' }}>
                 <b>{props.conservant.username}</b>
               </Link>
             </Typography>

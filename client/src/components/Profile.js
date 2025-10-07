@@ -37,7 +37,7 @@ const Profile = (props) => {
             <UserAvatar width={150} height={150} username={user.username} />
           </Box>
 
-          <Typography variant="h5">{user.username}</Typography>
+          <Typography variant="h5" sx={{ color: 'var(--accent)', fontWeight: 700 }}>{user.username}</Typography>
 
           {props.editing ? (
             <Box>
