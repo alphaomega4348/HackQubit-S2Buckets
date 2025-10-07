@@ -10,7 +10,7 @@ USER_LIKES_PAGE_SIZE = 9;
 
 const createPost = async (req, res) => {
   try {
-    const { title, content, userId } = req.body;
+    const { title, content, userId, image } = req.body;
 
     if (!(title && content)) {
       throw new Error("All input required");
@@ -27,11 +27,15 @@ const createPost = async (req, res) => {
       cooldown.delete(userId);
     }, 60000);
 
-    const post = await Post.create({
+    const created = await Post.create({
       title,
       content,
       poster: userId,
+      image: image || undefined,
     });
+
+    // populate poster before returning so frontend gets full data including image URL
+    const post = await Post.findById(created._id).populate("poster", "-password").lean();
 
     res.json(post);
   } catch (err) {

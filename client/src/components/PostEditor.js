@@ -5,6 +5,8 @@ import {
   Stack,
   TextField,
   Typography,
+  IconButton,
+  LinearProgress,
 } from "@mui/material";
 import { Box } from "@mui/system";
 import React, { useState } from "react";
@@ -23,6 +25,12 @@ const PostEditor = () => {
     title: "",
     content: "",
   });
+  //
+
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  //
 
   const [serverError, setServerError] = useState("");
   const [errors, setErrors] = useState({});
@@ -34,10 +42,70 @@ const PostEditor = () => {
     setErrors(errors);
   };
 
+  //
+
+  const handleFileChange = async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+
+    // auto upload to backend which uploads to Cloudinary
+    await uploadFileToServer(f);
+  };
+
+  const uploadFileToServer = async (f) => {
+    try {
+      setUploadingImage(true);
+      const data = new FormData();
+      data.append("file", f);
+      // optional: include folder (e.g. socialify/posts)
+      data.append("folder", "socialify/posts");
+
+      const res = await fetch("/api/uploads", {
+        method: "POST",
+        body: data,
+      });
+
+      // handle non-JSON responses (server HTML error pages)
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (err) {
+        console.error("Upload endpoint returned non-JSON response:", text);
+        setServerError("Upload failed: " + (text && text.length > 200 ? text.slice(0, 200) + "..." : text));
+        return;
+      }
+
+      if (json && json.secure_url) {
+        setFormData((prev) => ({ ...prev, image: json.secure_url }));
+      } else if (json && json.error) {
+        setServerError(json.error);
+      } else {
+        setServerError("Failed to upload image");
+      }
+    } catch (err) {
+      console.error(err);
+      setServerError("Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  //
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setLoading(true);
+    //
+    // if file selected but image not yet uploaded, try uploading now
+    if (file && !formData.image) {
+      await uploadFileToServer(file);
+    }
+    //
+
     const data = await createPost(formData, isLoggedIn());
     setLoading(false);
     if (data && data.error) {
@@ -72,6 +140,29 @@ const PostEditor = () => {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit}>
+          {/**/}
+          <input
+            id="post-file"
+            type="file"
+            accept="image/*,video/*"
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+          <label htmlFor="post-file">
+            <Button component="span" sx={{ mt: 1 }}>
+              Attach file
+            </Button>
+          </label>
+          {uploadingImage && <LinearProgress sx={{ mt: 1, mb: 1 }} />}
+          {preview && (
+            <Box sx={{ mt: 1, mb: 1 }}>
+              <Typography variant="subtitle2">Preview</Typography>
+              <Box component="img" src={preview} alt="preview" sx={{ maxWidth: "100%", maxHeight: 280 }} />
+            </Box>
+          )}
+
+          {/**/}
+
           <TextField
             fullWidth
             label="Title"

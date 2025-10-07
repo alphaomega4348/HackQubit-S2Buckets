@@ -15,7 +15,7 @@ const PostContentBox = (props) => {
         <Box
           sx={{
             padding: theme.spacing(2),
-            width: "92%",
+            flexGrow: 1,
             // use a subtle rgba overlay that reads well on dark backgrounds
             "&:hover": { backgroundColor: "rgba(255,255,255,0.03)", cursor: "pointer" },
           }}
@@ -24,9 +24,7 @@ const PostContentBox = (props) => {
           {props.children}
         </Box>
       ) : (
-        <Box sx={{ padding: theme.spacing(2), width: "90%" }}>
-          {props.children}
-        </Box>
+        <Box sx={{ padding: theme.spacing(2), flexGrow: 1 }}>{props.children}</Box>
       )}
     </>
   );
