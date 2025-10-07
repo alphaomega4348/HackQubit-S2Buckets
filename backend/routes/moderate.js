@@ -2,10 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// ✅ Correct API key usage with new SDK
-const genAI = new GoogleGenerativeAI({
-  apiKey: "AIzaSyAQgluL7YsqO0sEHtfdLx0EFWU3mFa5bLk",
-});
+// Initialize Gemini AI - DON'T hardcode the key!
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.post("/content", async (req, res) => {
   try {
@@ -15,47 +13,73 @@ router.post("/content", async (req, res) => {
       return res.status(400).json({ error: "Text is required" });
     }
 
-    // Quick pre-check
-    if (/\bhate\b/i.test(text)) {
+    // If text is empty or too short, allow it
+    if (text.trim().length < 3) {
       return res.json({
-        allowed: false,
-        reason: "Detected prohibited content (hate speech)",
-        severity: "medium",
-        cleanedText: text.replace(/\bhate\b/gi, "****"),
+        allowed: true,
+        reason: "",
+        severity: "low",
+        cleanedText: text,
       });
     }
 
-    // ✅ Updated model name (v1 API compatible)
+    // Simple check for "hate" word (case-insensitive)
+    const containsHate = /\bhate\b/i.test(text);
+
+    if (containsHate) {
+      return res.json({
+        allowed: false,
+        reason: "Image contains prohibited content (hate speech detected)",
+        severity: "high",
+      });
+    }
+
+    // Use Gemini for more sophisticated content moderation
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const prompt = `
-You are a content moderator. Analyze this text for hate speech, offensive language, discrimination, or any harmful content.
-Respond strictly in JSON:
+    const prompt = `You are a content moderator. Analyze the following text extracted from an image and determine if it contains:
+- Hate speech
+- Offensive language
+- Violent content
+- Discrimination
+- Harassment
+- Any other harmful content
+
+Text to analyze: "${text}"
+
+Respond in JSON format with:
 {
   "allowed": true/false,
-  "reason": "brief reason",
+  "reason": "brief explanation if not allowed",
   "severity": "low/medium/high",
-  "cleanedText": "sanitized version"
+  "cleanedText": "cleaned version of the text with offensive words removed or masked"
 }
 
-Text: "${text}"
-`;
+Only set allowed to false if the content is clearly harmful or violates community guidelines.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const responseText = response.text();
 
+    // Parse Gemini's response
     let moderationResult;
     try {
+      // Extract JSON from response (Gemini might wrap it in markdown)
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      moderationResult = jsonMatch ? JSON.parse(jsonMatch[0]) : {
-        allowed: true,
-        reason: "",
-        severity: "low",
-        cleanedText: text,
-      };
-    } catch (err) {
-      console.error("JSON parse error:", err);
+      if (jsonMatch) {
+        moderationResult = JSON.parse(jsonMatch[0]);
+      } else {
+        // Fallback: assume content is allowed if we can't parse
+        moderationResult = {
+          allowed: true,
+          reason: "",
+          severity: "low",
+          cleanedText: text,
+        };
+      }
+    } catch (parseError) {
+      console.error("Failed to parse Gemini response:", parseError);
+      // Fail open - allow content if AI check fails
       moderationResult = {
         allowed: true,
         reason: "",
@@ -67,6 +91,9 @@ Text: "${text}"
     res.json(moderationResult);
   } catch (error) {
     console.error("Content moderation error:", error);
+    
+    // Fail open - allow content if moderation service fails
+    // but log the error for monitoring
     res.json({
       allowed: true,
       reason: "",
