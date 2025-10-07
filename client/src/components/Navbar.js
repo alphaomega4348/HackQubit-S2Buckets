@@ -25,6 +25,7 @@ import { isLoggedIn, logoutUser } from "../helpers/authHelper";
 import UserAvatar from "./UserAvatar";
 import HorizontalStack from "./util/HorizontalStack";
 import { RiContrast2Line } from "react-icons/ri";
+import { FiLogOut } from "react-icons/fi";
 
 const Navbar = ({ mode, toggleMode }) => {
   const navigate = useNavigate();
@@ -144,7 +145,13 @@ const Navbar = ({ mode, toggleMode }) => {
               <IconButton component={Link}  to={"/users/" + username}>
                 <UserAvatar width={30} height={30} username={user.username} />
               </IconButton>
-              <Button onClick={handleLogout}>Logout</Button>
+              {mobile ? (
+                <IconButton onClick={handleLogout} title="Logout" aria-label="logout">
+                  <FiLogOut />
+                </IconButton>
+              ) : (
+                <Button onClick={handleLogout}>Logout</Button>
+              )}
             </>
           ) : (
             <>
