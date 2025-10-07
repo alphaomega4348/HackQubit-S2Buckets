@@ -88,32 +88,65 @@ const Messages = (props) => {
     messagesEndRef.current?.scrollIntoView();
   };
 
-  const handleSendMessage = async (content) => {
-    const newMessage = { direction: "from", content };
-    const newMessages = [newMessage, ...messages];
+  const detectHateSpeech = async (text) => {
+    try {
+      const response = await fetch("http://localhost:5000/detect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      });
 
-    if (conversation.new) {
-      conversation.messages = [...conversation.messages, newMessage];
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error detecting hate speech:", error);
+      throw error;
     }
+  };
 
-    let newConversations = props.conversations.filter(
-      (conversationCompare) => conversation._id !== conversationCompare._id
-    );
+  const handleSendMessage = async (content) => {
+    try {
+      // Check message content for hate speech
+      const contentResult = await detectHateSpeech(content);
+      
+      if (contentResult.result === 1 || contentResult === 1) {
+        // Return error to be displayed in SendMessage component
+        return { error: "Message contains hateful content and cannot be sent" };
+      }
 
-    newConversations.unshift(conversation);
+      const newMessage = { direction: "from", content };
+      const newMessages = [newMessage, ...messages];
 
-    props.setConversations(newConversations);
+      if (conversation.new) {
+        conversation.messages = [...conversation.messages, newMessage];
+      }
 
-    setMessages(newMessages);
+      let newConversations = props.conversations.filter(
+        (conversationCompare) => conversation._id !== conversationCompare._id
+      );
 
-    await sendMessage(user, newMessage, conversation.recipient._id);
+      newConversations.unshift(conversation);
 
-    socket.emit(
-      "send-message",
-      conversation.recipient._id,
-      user.username,
-      content
-    );
+      props.setConversations(newConversations);
+
+      setMessages(newMessages);
+
+      await sendMessage(user, newMessage, conversation.recipient._id);
+
+      socket.emit(
+        "send-message",
+        conversation.recipient._id,
+        user.username,
+        content
+      );
+
+      return { success: true };
+    } catch (err) {
+      console.error("Error validating message:", err);
+      return { error: "Failed to validate message. Please try again." };
+    }
   };
 
   const handleReceiveMessage = (senderId, username, content) => {
