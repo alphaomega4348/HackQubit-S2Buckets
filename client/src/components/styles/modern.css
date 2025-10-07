@@ -1,0 +1,120 @@
+:root{
+  --bg:#000000;
+  --card:#0f0f0f;
+  --muted:#bfcfc1;
+  --accent:#19c37d;
+  --accent-2:#0ea95b;
+  --glass: rgba(255,255,255,0.03);
+  --radius:12px;
+  --shadow: 0 10px 30px rgba(0,0,0,0.6);
+  --text:#f6f7f8;
+}
+
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+  margin:0;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+html, body { overflow-x: hidden; }
+
+.app-container{
+  max-width:1120px;
+  margin:32px auto;
+  padding:20px;
+}
+
+.background{
+  background-color: var(--bg);
+  min-height:100vh;
+}
+
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:16px;
+  border:1px solid rgba(255,255,255,0.03);
+}
+
+/* Fade-in / lift animation for all cards to make the UI feel dynamic */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card{
+  animation: fadeInUp 280ms ease both;
+  transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.card:hover{
+  transform: translateY(-6px) scale(1.006);
+  box-shadow: 0 22px 48px rgba(0,0,0,0.66);
+  border-color: rgba(255,255,255,0.06);
+}
+
+/* smoother buttons and inputs */
+.modern-btn, .MuiButton-root{
+  transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+.modern-btn:active, .MuiButton-root:active{
+  transform: translateY(1px) scale(.995);
+}
+
+/* input focus effect */
+.MuiInputBase-root{
+  transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+.MuiInputBase-root:focus-within{
+  box-shadow: 0 6px 18px rgba(25,195,125,0.07);
+}
+
+/* navbar title micro-interaction */
+.MuiTypography-root[style] {
+  transition: transform 180ms ease, text-shadow 180ms ease;
+}
+.MuiTypography-root[style]:hover{
+  transform: translateY(-2px) scale(1.02);
+  text-shadow: 0 6px 18px rgba(0,0,0,0.6);
+}
+
+.modern-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 14px;
+  border-radius:10px;
+  background: linear-gradient(90deg, rgba(25,195,125,0.95), rgba(14,169,91,0.95));
+  color:#ffffff;
+  font-weight:600;
+  border:none;
+  cursor:pointer;
+}
+
+.row{display:flex;align-items:center;gap:12px}
+.col{display:flex;flex-direction:column;gap:8px}
+
+@media (max-width:720px){
+  .app-container{margin:16px;padding:12px}
+}
+
+/* Light theme overrides - applied when body[data-theme='light'] is set */
+body[data-theme='light']{
+  --bg: #f6fbf6; /* very light greenish */
+  --card: #ffffff;
+  --muted: #46605a;
+  --accent: #1da86a;
+  --accent-2: #148d52;
+  --glass: rgba(0,0,0,0.03);
+  --shadow: 0 8px 24px rgba(2,6,23,0.06);
+  --text: #071026;
+}
+
+/* animate theme changes */
+body{transition: background 240ms ease, color 240ms ease}

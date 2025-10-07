@@ -17,7 +17,7 @@ import PostBrowser from "../PostBrowser";
 import Profile from "../Profile";
 import ProfileTabs from "../ProfileTabs";
 
-const ProfileView = () => {
+const ProfileView = ({ mode, toggleMode }) => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -95,7 +95,7 @@ const ProfileView = () => {
 
   return (
     <Container>
-      <Navbar />
+      <Navbar mode={mode} toggleMode={toggleMode} />
 
       <GridLayout
         left={

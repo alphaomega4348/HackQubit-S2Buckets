@@ -6,10 +6,10 @@ import Navbar from "../Navbar";
 import PostBrowser from "../PostBrowser";
 import Sidebar from "../Sidebar";
 
-const SearchView = () => {
+const SearchView = ({ mode, toggleMode }) => {
   return (
     <Container>
-      <Navbar />
+      <Navbar mode={mode} toggleMode={toggleMode} />
       <GridLayout
         left={
           <Stack spacing={2}>

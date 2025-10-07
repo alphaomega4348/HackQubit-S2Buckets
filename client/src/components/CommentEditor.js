@@ -13,7 +13,6 @@ const CommentEditor = ({ label, comment, addComment, setReplying }) => {
   });
 
   const [error, setError] = useState("");
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const params = useParams();
@@ -21,65 +20,26 @@ const CommentEditor = ({ label, comment, addComment, setReplying }) => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setErrors({});
-  };
-
-  const detectHateSpeech = async (text) => {
-    try {
-      const response = await fetch("http://localhost:5000/detect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error detecting hate speech:", error);
-      throw error;
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const body = {
+      ...formData,
+      parentId: comment && comment._id,
+    };
+
     setLoading(true);
-    setError("");
-    setErrors({});
+    const data = await createComment(body, params, isLoggedIn());
+    setLoading(false);
 
-    try {
-      // Check comment content for hate speech
-      const contentResult = await detectHateSpeech(formData.content);
-      
-      if (contentResult.result === 1 || contentResult === 1) {
-        setErrors({ 
-          content: "Comment contains hateful content and cannot be posted" 
-        });
-        setLoading(false);
-        return;
-      }
-
-      // If check passes, create the comment
-      const body = {
-        ...formData,
-        parentId: comment && comment._id,
-      };
-
-      const data = await createComment(body, params, isLoggedIn());
-      setLoading(false);
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        formData.content = "";
-        setReplying && setReplying(false);
-        addComment(data);
-      }
-    } catch (err) {
-      setLoading(false);
-      setError("Failed to validate comment. Please try again.");
+    if (data.error) {
+      setError(data.error);
+    } else {
+      formData.content = "";
+      setReplying && setReplying(false);
+      addComment(data);
     }
   };
 
@@ -110,13 +70,11 @@ const CommentEditor = ({ label, comment, addComment, setReplying }) => {
             required
             name="content"
             sx={{
-              backgroundColor: "white",
+              backgroundColor: 'rgba(255,255,255,0.03)'
             }}
             onChange={handleChange}
             onFocus={handleFocus}
             value={formData.content}
-            error={errors.content !== undefined}
-            helperText={errors.content}
           />
 
           <ErrorAlert error={error} sx={{ my: 4 }} />
@@ -126,11 +84,10 @@ const CommentEditor = ({ label, comment, addComment, setReplying }) => {
             fullWidth
             disabled={loading}
             sx={{
-              backgroundColor: "white",
               mt: 2,
             }}
           >
-            {loading ? <div>Checking and Submitting...</div> : <div>Submit</div>}
+            {loading ? <div>Submitting</div> : <div>Submit</div>}
           </Button>
         </Box>
       </Stack>

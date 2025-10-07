@@ -1,5 +1,5 @@
 .background {
-    background-image: url(./assets/bg.jpeg);
-    width: 100vw;
-    height: 100%;
+    background-color: #000; /* fallback black background */
+    width: 100%;
+    min-height: 100vh;
 }

@@ -26,7 +26,7 @@ import UserAvatar from "./UserAvatar";
 import HorizontalStack from "./util/HorizontalStack";
 import { RiContrast2Line } from "react-icons/ri";
 
-const Navbar = () => {
+const Navbar = ({ mode, toggleMode }) => {
   const navigate = useNavigate();
   const user = isLoggedIn();
   const theme = useTheme();
@@ -81,6 +81,9 @@ const Navbar = () => {
         spacing={!mobile ? 2 : 0}
       >
         <HorizontalStack>
+          <IconButton onClick={toggleMode} title="Toggle theme">
+            {mode === 'dark' ? '☀️' : '🌙'}
+          </IconButton>
           {/* <AiFillFileText
             size={33}
             color={theme.palette.primary.main}
@@ -95,16 +98,11 @@ const Navbar = () => {
           />
           <Typography
             sx={{ display: mobile ? "none" : "block" }}
-            variant={navbarWidth ? "h6" : "h4"}
+            variant={navbarWidth ? "h5" : "h3"}
             mr={1}
-            color={theme.palette.primary.main}
+            style={{ color: 'var(--accent)', fontWeight: 800, letterSpacing: '-0.5px' }}
           >
-            {/* <Link to="/" color="inherit"> */}
-            <div style={{ color:"purple"}}>
-                Socialify
-            </div>
-              
-            {/* </Link> */}
+            Socialify
           </Typography>
         </HorizontalStack>
 
@@ -120,8 +118,9 @@ const Navbar = () => {
           onChange={handleChange}
           value={search}
           style={{
-              background: "white",
+              background: "rgba(255,255,255,0.03)",
               borderRadius: "5px",
+              color: 'var(--text)'
           }}
         />
     </Box>

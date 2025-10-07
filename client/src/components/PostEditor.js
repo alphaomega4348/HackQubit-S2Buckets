@@ -30,65 +30,27 @@ const PostEditor = () => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear errors when user types
-    setErrors({});
-  };
-
-  const detectHateSpeech = async (text) => {
-    try {
-      const response = await fetch("http://localhost:5000/detect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await response.json();
-      return data; // Assuming API returns { result: 0 } or { result: 1 }
-    } catch (error) {
-      console.error("Error detecting hate speech:", error);
-      throw error;
-    }
+    const errors = validate();
+    setErrors(errors);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setLoading(true);
-    setServerError("");
-    setErrors({});
-
-    try {
-      // Check title for hate speech
-      const titleResult = await detectHateSpeech(formData.title);
-      if (titleResult.result === 1 || titleResult === 1) {
-        setErrors({ title: "Title contains hateful content and cannot be posted" });
-        setLoading(false);
-        return;
-      }
-
-      // Check content for hate speech
-      const contentResult = await detectHateSpeech(formData.content);
-      if (contentResult.result === 1 || contentResult === 1) {
-        setErrors({ content: "Content contains hateful content and cannot be posted" });
-        setLoading(false);
-        return;
-      }
-
-      // If both checks pass, create the post
-      const data = await createPost(formData, isLoggedIn());
-      setLoading(false);
-      
-      if (data && data.error) {
-        setServerError(data.error);
-      } else {
-        navigate("/posts/" + data._id);
-      }
-    } catch (error) {
-      setLoading(false);
-      setServerError("Failed to validate content. Please try again.");
+    const data = await createPost(formData, isLoggedIn());
+    setLoading(false);
+    if (data && data.error) {
+      setServerError(data.error);
+    } else {
+      navigate("/posts/" + data._id);
     }
+  };
+
+  const validate = () => {
+    const errors = {};
+
+    return errors;
   };
 
   return (
@@ -142,7 +104,7 @@ const PostEditor = () => {
               mt: 2,
             }}
           >
-            {loading ? <>Checking and Submitting...</> : <>Submit</>}
+            {loading ? <>Submitting</> : <>Submit</>}
           </Button>
         </Box>
       </Stack>

@@ -57,24 +57,13 @@ const Comment = (props) => {
     removeComment(comment);
   };
 
-  let style = {
-    backgroundColor: theme.palette.grey[100],
-    borderRadius: 1.5,
-    mb: theme.spacing(2),
-    padding: theme.spacing(0),
-  };
-
-  if (depth % 2 === 1) {
-    style.backgroundColor = "white";
-  }
-
   return (
-    <Box sx={style}>
+    <Box className="card" sx={{ mb: theme.spacing(2), padding: 0 }}>
       <Box
         sx={{
           pl: theme.spacing(2),
-          pt: theme.spacing(1),
-          pb: theme.spacing(1),
+          pt: theme.spacing(1.25),
+          pb: theme.spacing(1.25),
           pr: 1,
         }}
       >

@@ -4,64 +4,25 @@ import React, { useState } from "react";
 const ContentUpdateEditor = (props) => {
   const [content, setContent] = useState(props.originalContent);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setContent(e.target.value);
-    setError("");
   };
 
-  const detectHateSpeech = async (text) => {
-    try {
-      const response = await fetch("http://localhost:5000/detect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error detecting hate speech:", error);
-      throw error;
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     const content = e.target.content.value;
-    setLoading(true);
-    setError("");
+    let error = null;
 
-    try {
-      // Check content for hate speech
-      const contentResult = await detectHateSpeech(content);
-      
-      if (contentResult.result === 1 || contentResult === 1) {
-        setError("Content contains hateful content and cannot be updated");
-        setLoading(false);
-        return;
-      }
+    if (props.validate) {
+      error = props.validate(content);
+    }
 
-      // Run custom validation if provided
-      let validationError = null;
-      if (props.validate) {
-        validationError = props.validate(content);
-      }
-
-      if (validationError && validationError.length !== 0) {
-        setError(validationError);
-        setLoading(false);
-      } else {
-        await props.handleSubmit(e);
-        setLoading(false);
-      }
-    } catch (err) {
-      setLoading(false);
-      setError("Failed to validate content. Please try again.");
+    if (error && error.length !== 0) {
+      setError(error);
+    } else {
+      props.handleSubmit(e);
     }
   };
 
@@ -73,20 +34,14 @@ const ContentUpdateEditor = (props) => {
           fullWidth
           margin="normal"
           name="content"
-          sx={{ backgroundColor: "white" }}
+          sx={{ backgroundColor: 'rgba(255,255,255,0.03)', color: 'var(--text)' }}
           onChange={handleChange}
           error={error.length !== 0}
           helperText={error}
           multiline
-          disabled={loading}
         />
-        <Button
-          type="submit"
-          variant="outlined"
-          sx={{ backgroundColor: "white", mt: 1 }}
-          disabled={loading}
-        >
-          {loading ? "Checking and Updating..." : "Update"}
+        <Button type="submit" variant="outlined" sx={{ mt: 1 }}>
+          Update
         </Button>
       </Stack>
     </Box>

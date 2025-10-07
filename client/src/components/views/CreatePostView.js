@@ -6,10 +6,10 @@ import Navbar from "../Navbar";
 import PostEditor from "../PostEditor";
 import Sidebar from "../Sidebar";
 
-const CreatePostView = () => {
+const CreatePostView = ({ mode, toggleMode }) => {
   return (
-    <Container>
-      <Navbar />
+    <Container className="page-container" sx={{ px: { xs: 1, md: 0 } }}>
+      <Navbar mode={mode} toggleMode={toggleMode} />
       <GoBack />
       <GridLayout left={<PostEditor />} right={<Sidebar />} />
     </Container>

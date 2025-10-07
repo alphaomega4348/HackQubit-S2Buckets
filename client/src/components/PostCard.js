@@ -100,7 +100,7 @@ const PostCard = (props) => {
             alignItems="center"
             spacing={1}
             sx={{
-              backgroundColor: "grey.100",
+              background: 'transparent',
               width: "50px",
               padding: theme.spacing(1),
             }}

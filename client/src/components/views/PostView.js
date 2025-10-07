@@ -12,7 +12,7 @@ import Comments from "../Comments";
 import ErrorAlert from "../ErrorAlert";
 import { isLoggedIn } from "../../helpers/authHelper";
 
-const PostView = () => {
+const PostView = ({ mode, toggleMode }) => {
   const params = useParams();
 
   const [post, setPost] = useState(null);
@@ -37,7 +37,7 @@ const PostView = () => {
 
   return (
     <Container>
-      <Navbar />
+      <Navbar mode={mode} toggleMode={toggleMode} />
       <GoBack />
       <GridLayout
         left={

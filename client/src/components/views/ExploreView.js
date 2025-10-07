@@ -13,10 +13,10 @@ import Sidebar from "../Sidebar";
 import HorizontalStack from "../util/HorizontalStack";
 import PostBrowser from "../PostBrowser";
 
-const ExploreView = () => {
+const ExploreView = ({ mode, toggleMode }) => {
   return (
     <Container>
-      <Navbar />
+      <Navbar mode={mode} toggleMode={toggleMode} />
       <GridLayout
         left={<PostBrowser createPost contentType="posts" />}
         right={<Sidebar />}

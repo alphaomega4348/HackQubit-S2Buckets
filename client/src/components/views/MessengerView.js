@@ -8,7 +8,7 @@ import { getConversations } from "../../api/messages";
 import { isLoggedIn } from "../../helpers/authHelper";
 import { useLocation } from "react-router-dom";
 
-const MessengerView = () => {
+const MessengerView = ({ mode, toggleMode }) => {
   const [conservant, setConservant] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,7 @@ const MessengerView = () => {
 
   return (
     <Container>
-      <Navbar />
+      <Navbar mode={mode} toggleMode={toggleMode} />
       <Box>
         <Card sx={{ padding: 0 }}>
           <Grid
