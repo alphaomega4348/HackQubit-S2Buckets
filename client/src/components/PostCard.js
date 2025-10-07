@@ -95,22 +95,30 @@ const PostCard = (props) => {
     <Card sx={{ padding: 0 }} className="post-card">
       <Box className={preview}>
         <HorizontalStack spacing={0} alignItems="initial">
-          <Stack
-            justifyContent="space-between "
-            alignItems="center"
-            spacing={1}
-            sx={{
-              background: 'transparent',
-              width: "50px",
-              padding: theme.spacing(1),
-            }}
-          >
-            <LikeBox
-              likeCount={likeCount}
-              liked={post.liked}
-              onLike={handleLike}
-            />
-          </Stack>
+          {/* left column: controls only (no duplicate media) */}
+          <Box sx={{ width: { xs: "100%", md: 120 }, display: "flex", flexDirection: "column", gap: 1 }}>
+            <Box sx={{ display: "flex", justifyContent: "center", p: 1 }}>
+              {/* reserved for avatar/controls or small thumbnails if needed */}
+            </Box>
+
+            <Stack
+              justifyContent="space-between"
+              alignItems="center"
+              spacing={1}
+              sx={{
+                background: 'transparent',
+                width: "100%",
+                padding: theme.spacing(1),
+              }}
+            >
+              <LikeBox
+                likeCount={likeCount}
+                liked={post.liked}
+                onLike={handleLike}
+              />
+            </Stack>
+          </Box>
+
           <PostContentBox clickable={preview} post={post} editing={editing}>
             <HorizontalStack justifyContent="space-between">
               <ContentDetails
@@ -159,6 +167,25 @@ const PostCard = (props) => {
             >
               {post.title}
             </Typography>
+
+            {/* Render single larger image/video if present (Cloudinary URL) */}
+            {post.image && (
+              <Box sx={{ mt: 1, mb: 1, width: { xs: '100%', md: '100%' } }}>
+                {(() => {
+                  const url = post.image || "";
+                  const ext = url.split("?")[0].split(".").pop().toLowerCase();
+                  const videoExts = ["mp4", "webm", "ogg"];
+                  if (videoExts.includes(ext)) {
+                    return (
+                      <Box component="video" src={url} controls sx={{ width: '100%', maxHeight: 520, borderRadius: 1 }} />
+                    );
+                  }
+                  return (
+                    <Box component="img" src={url} alt="post media" sx={{ width: '100%', maxHeight: 520, objectFit: "cover", borderRadius: 1 }} />
+                  );
+                })()}
+              </Box>
+            )}
 
             {preview !== "secondary" &&
               (editing ? (
