@@ -12,6 +12,8 @@ const messages = require("./routes/messages");
 const uploads = require("./routes/uploads");
 const PostLike = require("./models/PostLike");
 const Post = require("./models/Post");
+const ocrRoutes = require("./routes/ocr");
+const moderateRoutes = require("./routes/moderate");
 
 dotenv.config();
 
@@ -44,6 +46,11 @@ app.use("/api/users", users);
 app.use("/api/comments", comments);
 app.use("/api/messages", messages);
 app.use("/api/uploads", uploads);
+
+
+// Register the routes
+app.use("/api/ocr", ocrRoutes);
+app.use("/api/moderate", moderateRoutes);
 
 if (process.env.NODE_ENV == "production") {
   app.use(express.static(path.join(__dirname, "/client/build")));

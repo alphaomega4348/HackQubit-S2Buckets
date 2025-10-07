@@ -1,12 +1,11 @@
 import {
   Button,
   Card,
-  Link,
   Stack,
   TextField,
   Typography,
-  IconButton,
   LinearProgress,
+  Alert,
 } from "@mui/material";
 import { Box } from "@mui/system";
 import React, { useState } from "react";
@@ -25,12 +24,13 @@ const PostEditor = () => {
     title: "",
     content: "",
   });
-  //
 
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  //
+  const [processingOCR, setProcessingOCR] = useState(false);
+  const [ocrText, setOcrText] = useState("");
+  const [moderationWarning, setModerationWarning] = useState("");
 
   const [serverError, setServerError] = useState("");
   const [errors, setErrors] = useState({});
@@ -42,15 +42,95 @@ const PostEditor = () => {
     setErrors(errors);
   };
 
-  //
+  // Perform OCR on the image
+  const performOCR = async (file) => {
+    try {
+      setProcessingOCR(true);
+      setModerationWarning("");
+      
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch("/api/ocr/extract", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        console.error("OCR Error:", data.error);
+        return null;
+      }
+
+      return data.text || "";
+    } catch (err) {
+      console.error("OCR extraction failed:", err);
+      return null;
+    } finally {
+      setProcessingOCR(false);
+    }
+  };
+
+  // Moderate content using Gemini
+  const moderateContent = async (text) => {
+    try {
+      const res = await fetch("/api/moderate/content", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        console.error("Moderation Error:", data.error);
+        return { allowed: true }; // Fail open in case of error
+      }
+
+      return {
+        allowed: data.allowed,
+        reason: data.reason,
+        cleanedText: data.cleanedText,
+      };
+    } catch (err) {
+      console.error("Content moderation failed:", err);
+      return { allowed: true }; // Fail open in case of error
+    }
+  };
 
   const handleFileChange = async (e) => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
+
     setFile(f);
     setPreview(URL.createObjectURL(f));
+    setModerationWarning("");
 
-    // auto upload to backend which uploads to Cloudinary
+    // Perform OCR on the image
+    const extractedText = await performOCR(f);
+    
+    if (extractedText) {
+      setOcrText(extractedText);
+      
+      // Moderate the extracted text
+      const moderation = await moderateContent(extractedText);
+      
+      if (!moderation.allowed) {
+        setModerationWarning(
+          moderation.reason || "Image contains inappropriate content and cannot be uploaded."
+        );
+        // Clear the file selection
+        setFile(null);
+        setPreview(null);
+        setOcrText("");
+        return;
+      }
+    }
+
+    // If moderation passed, upload to server
     await uploadFileToServer(f);
   };
 
@@ -59,7 +139,6 @@ const PostEditor = () => {
       setUploadingImage(true);
       const data = new FormData();
       data.append("file", f);
-      // optional: include folder (e.g. socialify/posts)
       data.append("folder", "socialify/posts");
 
       const res = await fetch("/api/uploads", {
@@ -67,14 +146,16 @@ const PostEditor = () => {
         body: data,
       });
 
-      // handle non-JSON responses (server HTML error pages)
       const text = await res.text();
       let json;
       try {
         json = JSON.parse(text);
       } catch (err) {
         console.error("Upload endpoint returned non-JSON response:", text);
-        setServerError("Upload failed: " + (text && text.length > 200 ? text.slice(0, 200) + "..." : text));
+        setServerError(
+          "Upload failed: " +
+            (text && text.length > 200 ? text.slice(0, 200) + "..." : text)
+        );
         return;
       }
 
@@ -93,21 +174,25 @@ const PostEditor = () => {
     }
   };
 
-  //
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Check if there's a moderation warning
+    if (moderationWarning) {
+      setServerError("Cannot submit post with flagged content");
+      return;
+    }
+
     setLoading(true);
-    //
-    // if file selected but image not yet uploaded, try uploading now
+
+    // If file selected but image not yet uploaded, try uploading now
     if (file && !formData.image) {
       await uploadFileToServer(file);
     }
-    //
 
     const data = await createPost(formData, isLoggedIn());
     setLoading(false);
+    
     if (data && data.error) {
       setServerError(data.error);
     } else {
@@ -117,7 +202,6 @@ const PostEditor = () => {
 
   const validate = () => {
     const errors = {};
-
     return errors;
   };
 
@@ -140,7 +224,6 @@ const PostEditor = () => {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit}>
-          {/**/}
           <input
             id="post-file"
             type="file"
@@ -153,15 +236,44 @@ const PostEditor = () => {
               Attach file
             </Button>
           </label>
-          {uploadingImage && <LinearProgress sx={{ mt: 1, mb: 1 }} />}
-          {preview && (
+
+          {processingOCR && (
             <Box sx={{ mt: 1, mb: 1 }}>
-              <Typography variant="subtitle2">Preview</Typography>
-              <Box component="img" src={preview} alt="preview" sx={{ maxWidth: "100%", maxHeight: 280 }} />
+              <Typography variant="caption">Processing image content...</Typography>
+              <LinearProgress />
             </Box>
           )}
 
-          {/**/}
+          {uploadingImage && (
+            <Box sx={{ mt: 1, mb: 1 }}>
+              <Typography variant="caption">Uploading image...</Typography>
+              <LinearProgress />
+            </Box>
+          )}
+
+          {moderationWarning && (
+            <Alert severity="error" sx={{ mt: 1, mb: 1 }}>
+              {moderationWarning}
+            </Alert>
+          )}
+
+          {preview && !moderationWarning && (
+            <Box sx={{ mt: 1, mb: 1 }}>
+              <Typography variant="subtitle2">Preview</Typography>
+              <Box
+                component="img"
+                src={preview}
+                alt="preview"
+                sx={{ maxWidth: "100%", maxHeight: 280 }}
+              />
+              {ocrText && (
+                <Typography variant="caption" sx={{ display: "block", mt: 1 }}>
+                  Detected text: {ocrText.substring(0, 100)}
+                  {ocrText.length > 100 ? "..." : ""}
+                </Typography>
+              )}
+            </Box>
+          )}
 
           <TextField
             fullWidth
@@ -190,10 +302,8 @@ const PostEditor = () => {
             variant="outlined"
             type="submit"
             fullWidth
-            disabled={loading}
-            sx={{
-              mt: 2,
-            }}
+            disabled={loading || processingOCR || !!moderationWarning}
+            sx={{ mt: 2 }}
           >
             {loading ? <>Submitting</> : <>Submit</>}
           </Button>
