@@ -5,6 +5,13 @@ import {
   Stack,
   Typography,
   useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  LinearProgress,
+  CircularProgress,
+  Box as MuiBox,
 } from "@mui/material";
 import { Box } from "@mui/system";
 import React, { useState } from "react";
@@ -27,6 +34,7 @@ import { MdCancel } from "react-icons/md";
 import { BiTrash } from "react-icons/bi";
 import { BsReplyFill } from "react-icons/bs";
 import UserLikePreview from "./UserLikePreview";
+import Grid from "@mui/material/Grid";
 
 const PostCard = (props) => {
   const { preview, removePost } = props;
@@ -90,6 +98,48 @@ const PostCard = (props) => {
       await unlikePost(post._id, user);
     }
   };
+
+  // Hard-coded analysis JSON (provided by user)
+  const analysis = {
+    overall_score: 90,
+    overall_classification: "offensive",
+    justification:
+      "The text contains direct, aggressive commands and highly offensive profanity intended to insult and demean, without any mitigating context.",
+    language_detected: "en",
+    context_adjustments:
+      "No context was provided, so the evaluation is based solely on the inherent meaning and common usage of the words.",
+    dimensions: {
+      hate_speech: {
+        score: 20,
+        explanation:
+          "While 'bitch' can carry misogynistic undertones, without specific context regarding the target, it's primarily a general insult rather than explicit hate speech against a protected group.",
+      },
+      harassment: {
+        score: 95,
+        explanation:
+          "The phrases 'shutup' and 'bitch' are direct, aggressive, and demeaning, clearly constituting a form of verbal harassment or insult.",
+      },
+      profanity: {
+        score: 90,
+        explanation:
+          "'Bitch' is a strong expletive and derogatory term. 'Shutup' is an aggressive command, often considered rude or abusive.",
+      },
+      toxicity: {
+        score: 98,
+        explanation:
+          "The text is highly toxic due to its aggressive, insulting, and demeaning language, intended to be confrontational and harmful.",
+      },
+      self_harm_or_violence: { score: 0, explanation: "There are no indications of self-harm or violence in the provided text." },
+      misinformation: { score: 0, explanation: "The text does not contain any factual claims, therefore misinformation is not applicable." },
+    },
+  };
+
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const openAnalysis = (e) => {
+    e && e.stopPropagation();
+    setAnalysisOpen(true);
+  };
+  const closeAnalysis = () => setAnalysisOpen(false);
 
   return (
     <Card sx={{ padding: 0 }} className="post-card">
@@ -221,9 +271,57 @@ const PostCard = (props) => {
                 />
               </Box>
             </HorizontalStack>
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+              <Button variant="outlined" size="small" onClick={openAnalysis}>Analyze offensiveness</Button>
+            </Box>
           </PostContentBox>
         </HorizontalStack>
       </Box>
+      {/* Analysis dialog */}
+      <Dialog open={analysisOpen} onClose={closeAnalysis} fullWidth maxWidth="sm">
+        <DialogTitle>Offensiveness analysis</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={4}>
+              <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                <CircularProgress variant="determinate" value={analysis.overall_score} size={96} />
+                <MuiBox
+                  sx={{
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    right: 0,
+                    position: 'absolute',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Typography variant="h6">{analysis.overall_score}%</Typography>
+                </MuiBox>
+              </Box>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="subtitle1" sx={{ textTransform: 'capitalize' }}>{analysis.overall_classification}</Typography>
+            </Grid>
+
+            <Grid item xs={12} sx={{ mt: 2 }}>
+              {Object.entries(analysis.dimensions).map(([key, val]) => (
+                <Box key={key} sx={{ mb: 1 }}>
+                  <HorizontalStack justifyContent="space-between">
+                    <Typography variant="subtitle2" sx={{ textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</Typography>
+                    <Typography variant="subtitle2">{val.score}%</Typography>
+                  </HorizontalStack>
+                  <LinearProgress variant="determinate" value={val.score} sx={{ height: 10, borderRadius: 2 }} />
+                </Box>
+              ))}
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeAnalysis}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 };

@@ -9,13 +9,21 @@ const Message = (props) => {
   const theme = useTheme();
 
   let styles = {};
+  // Use theme-aware colors for message bubbles so they contrast in dark mode
+  const incomingBg = theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[100];
+  const outgoingBg = theme.palette.mode === 'dark' ? theme.palette.primary.dark : theme.palette.primary.main;
+  const outgoingText = theme.palette.getContrastText(outgoingBg);
+
   if (message.direction === "to") {
     styles = {
       justifyContent: "flex-start",
+      messageColor: incomingBg,
+      messageTextColor: theme.palette.text.primary,
     };
   } else if (message.direction === "from") {
     styles = {
-      messageColor: theme.palette.grey["100"],
+      messageColor: outgoingBg,
+      messageTextColor: outgoingText,
       justifyContent: "flex-end",
     };
   }
@@ -35,6 +43,7 @@ const Message = (props) => {
         sx={{
           borderRadius: "25px",
           backgroundColor: styles.messageColor,
+          color: styles.messageTextColor,
           borderWidth: "1px",
           paddingY: "12px",
           maxWidth: "70%",
