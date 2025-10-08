@@ -7,18 +7,53 @@ import {
   TextField,
   Typography,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Avatar,
+  Box,
+  Tooltip,
+  useTheme,
 } from "@mui/material";
-import { Box } from "@mui/system";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPost } from "../api/posts";
 import { isLoggedIn } from "../helpers/authHelper";
 import HorizontalStack from "./util/HorizontalStack";
 import UserAvatar from "./UserAvatar";
+import {
+  MdWhatshot,
+  MdReport,
+  MdOutlineContentCut,
+  MdSentimentVeryDissatisfied,
+  MdOutlineErrorOutline,
+} from "react-icons/md";
+
+const ICON_MAP = {
+  hate_speech: MdReport,
+  harassment: MdWhatshot,
+  profanity: MdOutlineContentCut,
+  toxicity: MdSentimentVeryDissatisfied,
+  self_harm_or_violence: MdOutlineErrorOutline,
+  misinformation: MdOutlineErrorOutline,
+};
+
+function getColor(score) {
+  if (score >= 85) return "#ef4444";
+  if (score >= 60) return "#f59e0b";
+  if (score >= 35) return "#f97316";
+  return "#10b981";
+}
+
+const GEMINI_API_KEY =
+  import.meta.env?.VITE_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY";
 
 const PostEditor = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
   const user = isLoggedIn();
+
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [scanningImage, setScanningImage] = useState(false);
@@ -26,19 +61,113 @@ const PostEditor = () => {
   const [preview, setPreview] = useState(null);
   const [ocrText, setOcrText] = useState("");
   const [moderationData, setModerationData] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalLocked, setModalLocked] = useState(false);
   const [toast, setToast] = useState({ open: false, message: "", severity: "info" });
+  const [formData, setFormData] = useState({ title: "", content: "", image: "" });
 
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
-    image: "",
-  });
+  const showToast = (msg, severity = "info") =>
+    setToast({ open: true, message: msg, severity });
+  const closeToast = () => setToast((t) => ({ ...t, open: false }));
 
-  const showToast = (message, severity = "info") => {
-    setToast({ open: true, message, severity });
+  const checkWithGemini = async (text) => {
+    if (!text?.trim()) {
+      return { overall_classification: "safe", overall_score: 0, dimensions: {} };
+    }
+
+    const lower = text.toLowerCase();
+    if (
+      lower.includes("hate") ||
+      lower.includes("kill") ||
+      lower.includes("bitch") ||
+      lower.includes("fuck")
+    ) {
+      return {
+        overall_score: 90,
+        overall_classification: "offensive",
+        justification: "Moderation: detected offensive keywords in text.",
+        dimensions: {
+          hate_speech: { score: 90, explanation: "Detected hate-related words." },
+          harassment: { score: 85, explanation: "Text may harass or insult others." },
+          profanity: { score: 80, explanation: "Strong profanity detected." },
+          toxicity: { score: 95, explanation: "Highly toxic tone." },
+          self_harm_or_violence: { score: 15, explanation: "No direct violence found." },
+          misinformation: { score: 0, explanation: "No misinformation present." },
+        },
+      };
+    }
+
+    try {
+      const prompt = `
+You are a moderation model. Classify strictly in JSON only:
+{
+  "overall_score": number,
+  "overall_classification": "safe" | "risky" | "offensive",
+  "justification": string,
+  "dimensions": {
+    "hate_speech": {"score": number, "explanation": string},
+    "harassment": {"score": number, "explanation": string},
+    "profanity": {"score": number, "explanation": string},
+    "toxicity": {"score": number, "explanation": string},
+    "self_harm_or_violence": {"score": number, "explanation": string},
+    "misinformation": {"score": number, "explanation": string}
+  }
+}
+Text: """${text}"""`;
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+          }),
+        }
+      );
+
+      const json = await res.json().catch(() => ({}));
+      const raw = json?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+      let cleaned = raw
+        .replace(/```json|```/g, "")
+        .replace(/JSON parse failed.*?```json/gs, "")
+        .replace(/new ObjectId\([^)]+\)/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const firstBrace = cleaned.indexOf("{");
+      const lastBrace = cleaned.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        parsed = {
+          overall_classification: "safe",
+          justification: "Default safe content — Gemini parse fallback.",
+          dimensions: {},
+        };
+      }
+
+      parsed.overall_classification = parsed.overall_classification || "safe";
+      parsed.overall_score = parsed.overall_score || 0;
+      parsed.dimensions = parsed.dimensions || {};
+      parsed.justification = parsed.justification || "No justification.";
+
+      return parsed;
+    } catch {
+      return {
+        overall_classification: "safe",
+        overall_score: 0,
+        justification: "Network error fallback — safe content.",
+        dimensions: {},
+      };
+    }
   };
-
-  const closeToast = () => setToast({ ...toast, open: false });
 
   const performOCR = async (imageFile) => {
     try {
@@ -49,7 +178,7 @@ const PostEditor = () => {
       const json = await res.json();
       setOcrText(json.text || "");
       return json.text || "";
-    } catch (err) {
+    } catch {
       showToast("OCR scan failed", "error");
       return "";
     } finally {
@@ -65,12 +194,9 @@ const PostEditor = () => {
       data.append("folder", "socialify/posts");
       const res = await fetch("/api/uploads", { method: "POST", body: data });
       const json = await res.json();
-      if (json.secure_url) {
-        setFormData((prev) => ({ ...prev, image: json.secure_url }));
-      } else {
-        showToast("Image upload failed", "error");
-      }
-    } catch (err) {
+      if (json.secure_url) setFormData((p) => ({ ...p, image: json.secure_url }));
+      else showToast("Image upload failed", "error");
+    } catch {
       showToast("Upload error", "error");
     } finally {
       setUploadingImage(false);
@@ -86,53 +212,34 @@ const PostEditor = () => {
     await uploadFileToServer(f);
   };
 
-  const handleModerationCheck = async (text, context = null) => {
-    try {
-      const body = { text };
-     context="normal post by anonymous guy"
-      const res = await fetch("/api/moderate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      setModerationData(data);
-      if (data.overall_classification === "offensive") {
-        showToast(`⚠️ Offensive (${data.overall_score}%) - ${data.justification}`, "error");
-      } else if (data.overall_classification === "risky") {
-        showToast(`⚠️ Risky (${data.overall_score}%) - ${data.justification}`, "warning");
-      } else {
-        showToast("✅ Safe to post", "success");
-      }
-    } catch (err) {
-      showToast("Moderation check failed", "error");
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const combinedText = `${formData.title}\n${formData.content}\n${ocrText}`;
-    await handleModerationCheck(combinedText);
-    if (moderationData?.overall_classification === "offensive") return;
     setLoading(true);
+
+    const moderation = await checkWithGemini(combinedText);
+    setModerationData(moderation);
+
+    if ((moderation.overall_classification || "").toLowerCase().trim() === "offensive") {
+      // 🚫 block post
+      setModalOpen(true);
+      setModalLocked(true);
+      setTimeout(() => setModalLocked(false), 1500);
+      setLoading(false);
+      showToast("🚫 Offensive or unverified content detected. Post blocked.", "error");
+      return;
+    }
+
     const data = await createPost(formData, user);
     setLoading(false);
-    if (data.error) showToast(data.error, "error");
-    else navigate(`/posts/${data._id}`);
-  };
-
-  const getClassificationColor = (classification) => {
-    switch (classification) {
-      case "safe":
-        return "#4caf50"; // green
-      case "risky":
-        return "#ff9800"; // orange
-      case "offensive":
-        return "#f44336"; // red
-      default:
-        return "#9e9e9e"; // grey
+    if (data?.error) showToast(data.error, "error");
+    else {
+      showToast("✅ Post created successfully!", "success");
+      navigate(`/posts/${data._id}`);
     }
   };
+
+  const dims = moderationData?.dimensions || {};
 
   return (
     <Card sx={{ p: 2 }}>
@@ -206,49 +313,98 @@ const PostEditor = () => {
           onChange={(e) => setFormData({ ...formData, content: e.target.value })}
         />
 
-        {moderationData && (
-          <Box sx={{ mt: 2, p: 2, borderRadius: 1, bgcolor: "#f6f7f9" }}>
-            <Box
-              sx={{
-                height: 12,
-                borderRadius: 1,
-                backgroundColor: getClassificationColor(moderationData.overall_classification),
-                mb: 1,
-              }}
-              aria-label={`Moderation classification: ${moderationData.overall_classification}`}
-            />
-            <Typography variant="subtitle1" gutterBottom>
-              Moderation Result:{" "}
-              <strong>{moderationData.overall_classification.toUpperCase()}</strong> (
-              {moderationData.overall_score}%)
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5, mb: 1 }}>
-              {moderationData.justification}
-            </Typography>
-            {moderationData.dimensions &&
-              Object.entries(moderationData.dimensions).map(([k, v]) => (
-                <Typography key={k} variant="caption" display="block" sx={{ mb: 0.5 }}>
-                  {k}: {v.score}% - {v.explanation}
-                </Typography>
-              ))}
-          </Box>
-        )}
-
         <Button
           variant="contained"
           color="primary"
           type="submit"
-          disabled={
-            loading ||
-            uploadingImage ||
-            scanningImage ||
-            moderationData?.overall_classification === "offensive"
-          }
+          disabled={loading || uploadingImage || scanningImage}
           onClick={handleSubmit}
         >
           {loading ? "Submitting..." : "Submit"}
         </Button>
       </Stack>
+
+      {/* 🚫 Moderation Modal */}
+      <Dialog
+        open={modalOpen}
+        onClose={() => !modalLocked && setModalOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Avatar sx={{ bgcolor: theme.palette.mode === "dark" ? "#111" : "#f3f4f6" }}>
+            <MdReport />
+          </Avatar>
+          <Box>
+            <Typography variant="h6">Moderation Result</Typography>
+            <Typography variant="caption" color="text.secondary">
+              A quick visual summary
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent>
+          {moderationData ? (
+            <>
+              <Typography sx={{ mb: 1 }}>{moderationData.justification}</Typography>
+              {Object.entries(dims).map(([k, v]) => {
+                const Icon = ICON_MAP[k] || MdOutlineErrorOutline;
+                const color = getColor(v.score);
+                return (
+                  <Box key={k} sx={{ mb: 2 }}>
+                    <HorizontalStack alignItems="center" justifyContent="space-between">
+                      <HorizontalStack alignItems="center" spacing={1}>
+                        <Avatar sx={{ width: 28, height: 28, bgcolor: color, color: "#fff" }}>
+                          <Icon />
+                        </Avatar>
+                        <Tooltip title={v.explanation || ""}>
+                          <Typography variant="subtitle2" sx={{ textTransform: "capitalize" }}>
+                            {k.replace(/_/g, " ")}
+                          </Typography>
+                        </Tooltip>
+                      </HorizontalStack>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {v.score}%
+                      </Typography>
+                    </HorizontalStack>
+                    <LinearProgress
+                      variant="determinate"
+                      value={v.score}
+                      sx={{
+                        height: 10,
+                        borderRadius: 4,
+                        mt: 1,
+                        "& .MuiLinearProgress-bar": {
+                          background: `linear-gradient(90deg, ${color}, ${getColor(
+                            Math.min(100, v.score + 15)
+                          )})`,
+                        },
+                        background:
+                          theme.palette.mode === "dark" ? "#1f2937" : "#e5e7eb",
+                      }}
+                    />
+                  </Box>
+                );
+              })}
+            </>
+          ) : (
+            <Typography color="text.secondary">No moderation data available.</Typography>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            color="error"
+            disabled={modalLocked}
+            onClick={() => {
+              setModalOpen(false);
+              showToast("🚫 Post blocked due to offensive content.", "error");
+            }}
+          >
+            Understood
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={toast.open}

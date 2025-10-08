@@ -63,9 +63,8 @@ Rules:
     });
 
     const data = await response.json();
+    console.log(data);
 
-    // Uncomment for debugging
-    console.log("Gemini moderation raw:", JSON.stringify(data, null, 2));
 
     const outputText =
       data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
