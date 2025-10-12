@@ -3,8 +3,6 @@
 
 Socialify is a fully-featured social media web application, built with the MERN stack.
 
-Deployed at:- [Socialify Phi](https://socialify-phi.vercel.app/)
-
 
 ## Features
 
